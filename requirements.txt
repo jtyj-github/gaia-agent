@@ -1,0 +1,74 @@
+# Core LangGraph & LangChain
+langgraph>=0.2.0
+langchain>=0.3.0
+langchain-community>=0.3.0
+langchain-core>=0.3.0
+
+# Inference APIs
+ollama>=0.4.0  # Local LLM inference
+huggingface-hub>=0.25.0  # Fallback to HF InferenceClient
+transformers>=4.40.0  # For tokenization & model utils
+
+# Web Tools
+playwright>=1.40.0  # Browser automation
+beautifulsoup4>=4.12.0  # HTML parsing
+lxml>=5.0.0  # XML/HTML parser
+requests>=2.31.0  # HTTP requests
+selenium>=4.15.0  # Alternative browser automation
+duckduckgo-search>=4.0.0  # DuckDuckGo search API
+
+# File Processing Tools
+PyPDF2>=3.0.0  # PDF reading
+pdfplumber>=0.10.0  # Advanced PDF extraction
+openpyxl>=3.1.0  # Excel files (.xlsx)
+xlrd>=2.0.0  # Excel files (.xls)
+pandas>=2.0.0  # Data manipulation & CSV
+python-docx>=1.0.0  # Word documents
+Pillow>=10.0.0  # Image processing
+pytesseract>=0.3.10  # OCR for images
+python-magic>=0.4.27  # File type detection
+
+# Audio/Video Processing
+openai-whisper>=20231117  # Audio transcription
+pydub>=0.25.0  # Audio manipulation
+moviepy>=1.0.3  # Video processing
+
+# Code Execution & Sandboxing
+docker>=7.0.0  # Docker SDK for Python sandboxing
+e2b-code-interpreter>=0.0.7  # Secure code execution sandbox
+
+# Math & Scientific Computing
+sympy>=1.12  # Symbolic mathematics
+scipy>=1.11.0  # Scientific computing
+numpy>=1.24.0  # Numerical computing
+wolframalpha>=5.0.0  # Wolfram Alpha API
+
+# API Clients
+openai>=1.0.0  # For GPT vision API & embeddings
+google-api-python-client>=2.100.0  # Google APIs
+wikipedia>=1.4.0  # Wikipedia API
+
+# Data Validation & Parsing
+pydantic>=2.0.0  # Data validation
+python-dateutil>=2.8.0  # Date parsing
+pytz>=2023.3  # Timezone handling
+
+# Configuration & Environment
+python-dotenv>=1.0.0  # Environment variables
+pyyaml>=6.0  # YAML config parsing
+toml>=0.10.2  # TOML config parsing
+
+# Utilities
+tenacity>=8.2.0  # Retry logic
+tqdm>=4.66.0  # Progress bars
+colorama>=0.4.6  # Colored terminal output
+python-json-logger>=2.0.0  # Structured logging
+
+# Testing & Evaluation
+pytest>=7.4.0  # Testing framework
+pytest-asyncio>=0.21.0  # Async testing
+datasets>=2.14.0  # HuggingFace datasets (for GAIA)
+
+# Optional: Performance & Monitoring
+psutil>=5.9.0  # System monitoring
+memory-profiler>=0.61.0  # Memory profiling
