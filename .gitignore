@@ -219,3 +219,5 @@ __marimo__/
 # Custom
 CLAUDE.md
 implementation.md
+implementation/
+test*
