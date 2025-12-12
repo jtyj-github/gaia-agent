@@ -3,7 +3,7 @@ Web search tools using DuckDuckGo.
 Provides search capabilities without requiring API keys.
 """
 
-from duckduckgo_search import DDGS
+from ddgs import DDGS
 from typing import List, Dict
 from utils import setup_logger, SimpleCache
 
