@@ -1,0 +1,27 @@
+# Model Configuration
+# Controls which LLM providers and models to use
+
+model:
+  provider: ollama  # Options: ollama, huggingface
+
+  # Ollama Configuration (Local Inference)
+  ollama:
+    base_url: http://localhost:11434
+    model: llama3.1:8b
+    temperature: 0.1
+    timeout: 60
+
+  # HuggingFace Configuration (Cloud Inference)
+  huggingface:
+    model: meta-llama/Llama-3.1-8B-Instruct
+    temperature: 0.1
+    max_tokens: 2048
+
+  # Model Routing by Agent Type
+  # Use different models for different agents if needed
+  routing:
+    orchestrator: llama3.1:8b  # Main coordinator
+    web_agent: llama3.1:8b
+    code_executor: llama3.1:8b
+    file_handler: llama3.1:8b
+    validator: llama3.1:8b

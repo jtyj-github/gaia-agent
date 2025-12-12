@@ -1,0 +1,49 @@
+# Tool Configuration
+# Settings for various tools and external services
+
+search:
+  provider: duckduckgo  # Free, no API key needed
+  max_results: 5
+  region: us-en
+  safe_search: moderate
+
+browser:
+  engine: playwright  # Options: playwright, selenium
+  headless: true
+  timeout: 30
+  viewport:
+    width: 1280
+    height: 720
+
+code_execution:
+  sandbox: docker
+  timeout: 30
+  memory_limit: 512m
+  network_enabled: false  # Disable network for security
+
+file_processing:
+  pdf:
+    engine: pdfplumber  # Options: pdfplumber, PyPDF2
+    extract_images: true
+
+  excel:
+    engine: openpyxl
+    read_only: true
+
+  image:
+    ocr_enabled: true
+    vision_api: openai  # Requires OPENAI_API_KEY (optional)
+
+  audio:
+    transcription: whisper
+    model: base
+
+math:
+  symbolic_engine: sympy
+  wolfram_enabled: true  # Requires WOLFRAM_ALPHA_APP_ID (optional)
+
+caching:
+  enabled: true
+  ttl: 3600  # Time to live in seconds (1 hour)
+  max_size: 1000  # Maximum number of cached items
+  cache_dir: .cache
