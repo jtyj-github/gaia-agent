@@ -108,15 +108,26 @@ class Orchestrator:
             logger.info("Final answer already set")
             return state
 
-        # First iteration: try to answer directly
+        # First iteration: decide whether to try direct answer or use tools
+        # For GAIA benchmark, most questions require tools, so be conservative about direct answers
         if state['current_step'] == 0:
-            logger.info("First iteration: attempting direct answer")
-            direct_answer = self._try_direct_answer(state)
-            if direct_answer:
-                logger.info("Question answered directly without agent delegation")
-                state['final_answer'] = direct_answer
-                state['reasoning_trace'].append("Step 0: Answered directly using general knowledge")
-                return state
+            # Only try direct answer for very simple questions
+            # Check if file is attached - if so, always delegate to file_handler
+            if state['file_path']:
+                logger.info("File attached - skipping direct answer attempt")
+            else:
+                logger.info("First iteration: checking if direct answer is possible")
+                needs_tools = self._check_if_tools_needed(state)
+                if not needs_tools:
+                    logger.info("Attempting direct answer")
+                    direct_answer = self._try_direct_answer(state)
+                    if direct_answer and not direct_answer.startswith("NEED_TOOLS"):
+                        logger.info("Question answered directly without agent delegation")
+                        state['final_answer'] = direct_answer
+                        state['reasoning_trace'].append("Step 0: Answered directly using general knowledge")
+                        return state
+                else:
+                    logger.info("Tools needed - skipping direct answer")
 
         # Make decision
         decision = self._make_decision(state)
@@ -129,6 +140,37 @@ class Orchestrator:
         state['current_step'] += 1
 
         return state
+
+    def _check_if_tools_needed(self, state: OrchestratorState) -> bool:
+        """
+        Quick check if question obviously requires tools.
+
+        Args:
+            state: Current workflow state
+
+        Returns:
+            True if tools are clearly needed, False otherwise
+        """
+        question_lower = state['question'].lower()
+
+        # Keywords that suggest tools are needed
+        tool_keywords = [
+            # Web/URL related
+            'arxiv', 'wikipedia', 'website', 'url', 'link', 'article', 'paper',
+            'published', 'author', 'journal', 'doi',
+            # Data/file related
+            'file', 'attached', 'document', 'spreadsheet', 'csv', 'excel',
+            # Current/recent data
+            'latest', 'recent', 'current', '2020', '2021', '2022', '2023', '2024', '2025',
+            'today', 'yesterday', 'this year', 'last year',
+            # Complex calculations
+            'calculate', 'compute', 'sum of', 'average of', 'total of',
+            # Specific lookups
+            'find the', 'search for', 'look up', 'what is the name of',
+            'how many', 'list all', 'count the'
+        ]
+
+        return any(keyword in question_lower for keyword in tool_keywords)
 
     def _try_direct_answer(self, state: OrchestratorState) -> str:
         """

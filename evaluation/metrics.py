@@ -8,6 +8,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any, List
 from utils import setup_logger
+from evaluation.scorer import question_scorer
 
 logger = setup_logger("metrics")
 
@@ -33,7 +34,7 @@ class MetricsTracker:
 
     def log_prediction(self, task_id: str, question: str, prediction: str,
                       ground_truth: str = None, correct: bool = None,
-                      reasoning_trace: List[str] = None):
+                      reasoning_trace: List[str] = None, level: int = None):
         """
         Log a single prediction.
 
@@ -44,6 +45,7 @@ class MetricsTracker:
             ground_truth: Ground truth answer (optional)
             correct: Whether prediction is correct (optional)
             reasoning_trace: Steps taken to reach answer (optional)
+            level: Difficulty level of the question (optional)
         """
         self.current_run['predictions'][task_id] = {
             'question': question,
@@ -51,6 +53,7 @@ class MetricsTracker:
             'ground_truth': ground_truth,
             'correct': correct,
             'reasoning_trace': reasoning_trace or [],
+            'level': level,
             'timestamp': datetime.now().isoformat()
         }
 
@@ -72,9 +75,81 @@ class MetricsTracker:
 
         logger.warning(f"Logged error for task {task_id}: {error}")
 
+    def compute_metrics(self) -> Dict[str, Any]:
+        """
+        Compute final metrics using GAIA scorer.
+
+        Returns:
+            Dictionary of computed metrics
+        """
+        predictions = self.current_run['predictions']
+
+        # Overall metrics
+        total = len(predictions)
+        correct = 0
+
+        # Level-wise metrics
+        level_stats = {1: {'total': 0, 'correct': 0},
+                      2: {'total': 0, 'correct': 0},
+                      3: {'total': 0, 'correct': 0}}
+
+        # Score each prediction
+        for task_id, pred_data in predictions.items():
+            ground_truth = pred_data.get('ground_truth')
+            prediction = pred_data.get('prediction')
+            level = pred_data.get('level', 'Unknown')
+
+            # Skip if no ground truth (test set)
+            if ground_truth is None:
+                continue
+
+            # Score using official GAIA scorer
+            is_correct = question_scorer(prediction, ground_truth)
+
+            # Update prediction data
+            pred_data['correct'] = is_correct
+
+            # Update counters
+            if is_correct:
+                correct += 1
+
+            # Update level stats
+            if level in level_stats:
+                level_stats[level]['total'] += 1
+                if is_correct:
+                    level_stats[level]['correct'] += 1
+
+        # Compute accuracies
+        accuracy = correct / total if total > 0 else 0.0
+
+        level_accuracies = {}
+        for level, stats in level_stats.items():
+            if stats['total'] > 0:
+                level_accuracies[f'level_{level}_accuracy'] = stats['correct'] / stats['total']
+                level_accuracies[f'level_{level}_correct'] = stats['correct']
+                level_accuracies[f'level_{level}_total'] = stats['total']
+            else:
+                level_accuracies[f'level_{level}_accuracy'] = 0.0
+                level_accuracies[f'level_{level}_correct'] = 0
+                level_accuracies[f'level_{level}_total'] = 0
+
+        metrics = {
+            'accuracy': accuracy,
+            'correct': correct,
+            'total': total,
+            **level_accuracies,
+            'error_count': len(self.current_run['errors'])
+        }
+
+        self.current_run['metrics'] = metrics
+        self.current_run['end_time'] = datetime.now().isoformat()
+
+        logger.info(f"Metrics computed: {accuracy:.2%} accuracy ({correct}/{total})")
+        return metrics
+
     def set_metrics(self, metrics: Dict[str, Any]):
         """
-        Set final metrics.
+        Set final metrics manually.
 
         Args:
             metrics: Dictionary of metric values

@@ -64,7 +64,8 @@ def generate_predictions(limit: int = None, split: str = "test", output_file: st
     # Load GAIA dataset
     logger.info(f"Loading GAIA {split} dataset...")
     try:
-        dataset = load_dataset("gaia-benchmark/GAIA", split=split)
+        # GAIA requires a config name - use '2023_all' for all difficulty levels
+        dataset = load_dataset("gaia-benchmark/GAIA", "2023_all", split=split)
         logger.info(f"Loaded {len(dataset)} questions")
     except Exception as e:
         logger.error(f"Error loading dataset: {e}")
@@ -86,6 +87,7 @@ def generate_predictions(limit: int = None, split: str = "test", output_file: st
         question = item['Question']
         file_path = item.get('file_path')  # If file is attached
         level = item.get('Level', 'Unknown')
+        ground_truth = item.get('Final answer') if split == 'validation' else None  # Only validation has ground truth
 
         logger.info(f"\nTask: {task_id} (Level {level})")
         logger.info(f"Question: {question[:100]}...")
@@ -101,15 +103,19 @@ def generate_predictions(limit: int = None, split: str = "test", output_file: st
             # Normalize for GAIA format
             normalized_answer = validator.normalize_for_gaia(final_answer)
 
-            # Log prediction with reasoning trace
+            # Log prediction with reasoning trace and ground truth
             tracker.log_prediction(
                 task_id=task_id,
                 question=question,
                 prediction=normalized_answer,
-                reasoning_trace=result['reasoning_trace']
+                ground_truth=ground_truth,
+                reasoning_trace=result['reasoning_trace'],
+                level=level
             )
 
             logger.info(f"Answer: {normalized_answer}")
+            if ground_truth:
+                logger.info(f"Ground Truth: {ground_truth}")
             logger.info(f"Steps: {result['steps']}")
 
         except Exception as e:
@@ -120,16 +126,35 @@ def generate_predictions(limit: int = None, split: str = "test", output_file: st
                 task_id=task_id,
                 question=question,
                 prediction="",
-                reasoning_trace=[f"Error: {str(e)}"]
+                ground_truth=ground_truth,
+                reasoning_trace=[f"Error: {str(e)}"],
+                level=level
             )
 
     logger.info("\n" + "="*60)
     logger.info("Prediction Generation Complete")
     logger.info("="*60)
 
+    # Compute metrics (only for validation split which has ground truth)
+    if split == 'validation':
+        logger.info("Computing metrics using GAIA scorer...")
+        metrics = tracker.compute_metrics()
+    else:
+        logger.info("Test split - no ground truth available for scoring")
+        metrics = {
+            'total': len(tracker.current_run['predictions']),
+            'error_count': len(tracker.current_run['errors'])
+        }
+        tracker.set_metrics(metrics)
+
     # Save submission file
     logger.info("Saving submission file...")
     submission_file = tracker.save_submission_format(filename=output_file)
+
+    # Save detailed results with scores
+    if split == 'validation':
+        results_file = tracker.save(filename=output_file.replace('.jsonl', '_detailed.json') if output_file else None)
+        logger.info(f"Detailed results saved to: {results_file}")
 
     # Print summary
     total_predictions = len(tracker.current_run['predictions'])
@@ -141,17 +166,43 @@ def generate_predictions(limit: int = None, split: str = "test", output_file: st
     print(f"Total questions processed: {total_predictions}")
     print(f"Successful predictions: {total_predictions - total_errors}")
     print(f"Failed predictions: {total_errors}")
-    print(f"\nSubmission file: {submission_file}")
+
+    # Print accuracy metrics if validation split
+    if split == 'validation':
+        print("\n" + "="*60)
+        print("ACCURACY METRICS (Official GAIA Scorer)")
+        print("="*60)
+        print(f"Overall Accuracy: {metrics['accuracy']:.2%} ({metrics['correct']}/{metrics['total']})")
+        print(f"\nBy Difficulty Level:")
+        for level in [1, 2, 3]:
+            acc = metrics.get(f'level_{level}_accuracy', 0)
+            correct = metrics.get(f'level_{level}_correct', 0)
+            total = metrics.get(f'level_{level}_total', 0)
+            print(f"  Level {level}: {acc:.2%} ({correct}/{total})")
+
+    print("\n" + "="*60)
+    print("FILES GENERATED")
+    print("="*60)
+    print(f"Submission file: {submission_file}")
+    if split == 'validation':
+        print(f"Detailed results: {results_file}")
     print("="*60)
 
     if total_errors > 0:
-        print("\nWarning: Some predictions failed. Check logs for details.")
+        print("\n⚠ Warning: Some predictions failed. Check logs for details.")
         print("Failed tasks will have empty answers in submission file.")
 
-    print("\nNext steps:")
-    print(f"1. Review the submission file: {submission_file}")
-    print("2. Upload it to HuggingFace GAIA benchmark submission form")
-    print("3. Wait for evaluation results!")
+    if split == 'test':
+        print("\nNext steps for TEST split:")
+        print(f"1. Review the submission file: {submission_file}")
+        print("2. Upload it to HuggingFace GAIA benchmark submission form")
+        print("3. Wait for evaluation results!")
+    else:
+        print("\nNext steps for VALIDATION split:")
+        print(f"1. Review detailed results: {results_file}")
+        print(f"2. Analyze errors and improve your system")
+        print(f"3. Run on test split when ready: python generate_predictions.py --split test")
+
     print("="*60 + "\n")
 
     return submission_file
